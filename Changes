@@ -24,3 +24,8 @@ Revision history for Perl extension Env::Bash.
 
 0.03     Fri Dec 24 03:51:04 UTC 2004
         - handle systems w/o bash ( like MSWin32 ).
+
+0.04     Fri Dec 24 12:38:49 UTC 2004
+        - fixed tests to not fail on MSWin32
+        - fixed caching state of 'have_bash' so as not to
+          repeat the 'bash not found' error on systems w/o bash.

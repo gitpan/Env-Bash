@@ -66,7 +66,14 @@ for my $var( sort keys %ENV ) {
 # tests exists
 
 tie %env, "Env::Bash", Source => $source;
-ok( exists $env{HOME},             "check HOME exists" );
+
+ SKIP: {
+     $ENV{PATH}
+         or skip 'PATH in $ENV', 1;
+
+     ok( exists $env{PATH},             "check PATH exists" );
+
+ };
 
  SKIP: {
      Env::Bash::_have_bash()

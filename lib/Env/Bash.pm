@@ -14,7 +14,7 @@ our @EXPORT    = qw( get_env_var get_env_keys );
 
 our $HAVEBASH = 1;
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 $VERSION = eval $VERSION;
 
 =pod
@@ -332,6 +332,7 @@ sub _select_keys
 
 sub _have_bash
 {
+    return '' unless $HAVEBASH;
     my $bash;
     $HAVEBASH = 1;
     $bash = $ENV{SHELL};
@@ -460,7 +461,7 @@ B<Linux Sorcerer>. For my fellow Sorcererites, this is fine, for others,
 please see L<A SHAMELESS PLUG FOR LINUX SORCERER> below.
 
 B<NOTE:> on systems without bash, this module turns into an expensive
-inplementation of $ENV{...}.
+implementation of $ENV{...}.
 
 =head2 Options
 
@@ -829,13 +830,19 @@ All and all, I love it! Check it out at L<http://sorcerer.wox.org>
 
 =item December 23, 2004
 
-Minor bug in AUTOLOAD in version 0.01. Fixed in 0.02.
+Minor bug in AUTOLOAD in version 0.01. Resolved in 0.02.
 
 =item December 24, 2004
 
 On systems without a bash executable, revert to using $ENV{...} and     
 skip tests using source scripts ( as on
-MSWin32 ). Fixed in 0.03.
+MSWin32 ). Resolved in 0.03.
+
+=item December 24 2004
+
+Again, on systems without a bash executable, some tests fail.
+In addition, those systems are bombarded with error messages
+'...bash not found...'. Resolved in 0.04.
 
 =back
 

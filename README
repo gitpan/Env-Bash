@@ -1,4 +1,4 @@
-Env-Bash version 0.03
+Env-Bash version 0.04
 ========================
 
 NAME
@@ -7,7 +7,7 @@ NAME
 
 NOTE
     On systems without bash, this module turns into an expensive
-    inplementation of $ENV{...}.
+    implementation of $ENV{...}.
 
 INSTALLATION
     To install this module type the following:
@@ -21,7 +21,7 @@ DEPENDENCIES
     This module requires these other modules and libraries:
 
        Perl        >= 5.8.0.
-       Test::More  >= 0.50 ( in the perl distribution ).
+       Test::More  >= 0.47 ( in the perl distribution ).
 
 SYNOPSIS
       use Env::Bash;
@@ -106,7 +106,7 @@ DESCRIPTION
     others, please see "A SHAMELESS PLUG FOR LINUX SORCERER" below.
 
     NOTE: on systems without bash, this module turns into an expensive
-    inplementation of $ENV{...}.
+    implementation of $ENV{...}.
 
   Options
     The following options, specified as func( ..., key1 => value1, ..., )
@@ -354,10 +354,16 @@ A SHAMELESS PLUG FOR LINUX SORCERER
 
 BUGS
     December 23, 2004
-        Minor bug in AUTOLOAD in version 0.01. Fixed in 0.02.
+        Minor bug in AUTOLOAD in version 0.01. Resolved in 0.02.
+
     December 24, 2004
         On systems without a bash executable, revert to using $ENV{...} and
-        skip tests using source scripts ( as on MSWin32 ). Fixed in 0.03.
+        skip tests using source scripts ( as on MSWin32 ). Resolved in 0.03.
+
+    December 24 2004
+        Again, on systems without a bash executable, some tests fail. In
+        addition, those systems are bombarded with error messages '...bash
+        not found...'. Resolved in 0.04.
 
 SEE ALSO
     The 'Advanced Bash-Scripting Guide' at
@@ -372,4 +378,3 @@ COPYRIGHT AND LICENSE
     This library is free software; you can redistribute it and/or modify it
     under the same terms as Perl itself, either Perl version 5.8.6 or, at
     your option, any later version of Perl 5 you may have available.
-

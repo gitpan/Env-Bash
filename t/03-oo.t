@@ -67,9 +67,15 @@ my $source = "$Bin/test-source.sh";
 
 # tests keys
 
-
 my @keys = $be->keys( Source => $source );
-ok( grep( /^HOME$/, @keys ), "check HOME in keys" );
+
+ SKIP: {
+     $ENV{PATH}
+         or skip 'PATH in $ENV', 1;
+
+     ok( grep( /^PATH$/, @keys ), "check PATH in keys" );
+
+ };
 
  SKIP: {
      Env::Bash::_have_bash()
