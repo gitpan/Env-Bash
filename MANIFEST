@@ -1,0 +1,11 @@
+Changes
+Makefile.PL
+MANIFEST
+README
+t/01-general.t
+t/02-standard.t
+t/03-oo.t
+t/04-tie.t
+t/test-source.sh
+lib/Env/Bash.pm
+META.yml                                 Module meta-data (added by MakeMaker)
