@@ -6,3 +6,11 @@ Revision history for Perl extension Env::Bash.
 
 0.00_02  Tue Dec 21 03:01:57 UTC 2004
         - minor bug fixed in _get_env_var.
+
+0.00_05  Tue Dec 21 15:55:56 UTC 2004
+        - validate bash is present.
+        - changed process to load environment keys.
+        - changed option GrepRegex to SelectRegex and
+          made it a perl regex.
+        - added option SourceOnly which returns the
+          only the variables defined in the Source scripts.

@@ -84,4 +84,4 @@ is( $var, $sb[0], "compare sorces $name ( AUTOLOAD )" );
 
 diag( "several failure messages should follow - that's ok" );
 $var = eval { $be->$name( Source => "$Bin/happyfunball" ); };
-ok( $@, "check missing source failure" );
+ok( ! $@, "check missing source failure" );

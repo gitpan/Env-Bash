@@ -12,15 +12,14 @@ our @ISA = qw(Exporter);
 
 our @EXPORT    = qw( get_env_var get_env_keys );
 
-our $VERSION = '0.00_02';
+our $VERSION = '0.00_05';
 $VERSION = eval $VERSION;
 
 =pod
 
 =head1 NAME
 
-Env::Bash - Perl extension for accessing B<ALL> environment variables
-in the Borne Again Shell ( bash ).
+Env::Bash - Perl extension for accessing _aLL_ bash environment variables.
 
 =head1 SYNOPSIS
 
@@ -32,13 +31,14 @@ Standard interface:
                          Source => "/etc/sorcery/config", );
   print "SORCERER_MIRRORS via get_env_var:\n",
   join( "\n", @var ), "\ncount = ", scalar @var, "\n";
-
+  
   @var = Env::Bash::SORCERER_MIRRORS
       ( Source => "/etc/sorcery/config", );
   print "SORCERER_MIRRORS via name:\n",
   join( "\n", @var ), "\ncount = ", scalar @var, "\n";
-
-  my @keys = get_env_keys( Source => "/etc/sorcery/config", );
+  
+  my @keys = get_env_keys( Source => "/etc/sorcery/config",
+                           SourceOnly => 1, );
   print "first 10 keys:\n", map { " $_\n" } @keys[0..9];
 
 =cut
@@ -69,23 +69,7 @@ sub get_env_var
 
 sub get_env_keys
 {
-    my %options = _options( @_ );
-    $options{GrepRegex} = '^[_A-Z][_A-Z0-9]\+\>' unless $options{GrepRegex};
-    my @sources = _sources( %options );
-    my $script = @sources ? join( ';', @sources ).';' : '';
-    $script .= "set | grep \"$options{GrepRegex}\"";
-    my $result = _execute_script( $script, %options );
-    my @keys = ();
-    for my $item( split /\n/, $result ) {
-        next unless $item;
-        my( $name, $value ) = split /=/, $item;
-        next unless $name && defined $value;
-        next if $name eq 'BASH_EXECUTION_STRING';
-        push @keys, $name;
-    }
-    @keys = sort @keys;
-    return unless defined wantarray;
-    wantarray ? @keys : \@keys;
+    _get_env_keys( @_ );
 }
 
 =pod
@@ -97,21 +81,21 @@ Object oriented interface:
   my @var = $be->get( "SORCERER_MIRRORS" );
   print "SORCERER_MIRRORS via get:\n",
   join( "\n", @var ), "\ncount = ", scalar @var, "\n";
-    
+      
   @var = $be->SORCERER_MIRRORS;
   print "SORCERER_MIRRORS via name:\n",
   join( "\n", @var ), "\ncount = ", scalar @var, "\n";
-
+  
   $be = Env::Bash->new( Keys => 1,);
   @var = $be->HOSTTYPE;
   print "HOSTTYPE via name:\n",
   join( "\n", @var ), "\ncount = ", scalar @var, "\n";
-
+  
   if( $be->exists( 'BASH_VERSINFO' ) ) {
       print "BASH_VERSINFO =>\n ",
       join( "\n ", $be->BASH_VERSINFO ), "\n";
   }
-
+  
   my %options = $be->options( [], Keys => 1 );
 
 =cut
@@ -124,8 +108,9 @@ sub new
 {
     my( $invocant, @options ) = @_;
     my $class = ref( $invocant ) || $invocant;
-    my $s = { options => { GrepRegex => '^[_A-Z][_A-Z0-9]\+\>', }, };
+    my $s = { options => {}, };
     bless $s, $class;
+    _get_bash();
     $s->options( @options );
     $s->keys() if $s->{options}{Keys};
     $s;
@@ -156,7 +141,7 @@ sub keys
         return unless defined wantarray;
         return wantarray ? @{$s->{keys}} : $s->{keys};
     }
-    my @keys = get_env_keys( %{$s->{options}} );
+    my @keys = _get_env_keys( %{$s->{options}} );
     $s->{keys} = [ @keys ];
     return unless defined wantarray;
     wantarray ? @keys : \@keys;
@@ -188,15 +173,15 @@ Tie HASH interface:
 
   my %env = ();
   tie %env, "Env::Bash", Source => "/etc/sorcery/config", ForceArray => 1;
-
+  
   my $var = $env{SORCERER_MIRRORS};
   print "SORCERER_MIRRORS via tied hash:\n",
   join( "\n", @$var ), "\ncount = ", scalar @$var, "\n";
-
+  
   $var = $env{HOSTTYPE};
   print "HOSTTYPE via tied hash:\n",
   join( "\n", @$var ), "\ncount = ", scalar @$var, "\n";
-
+  
   while( my( $key, $value ) = each %env ) {
       print "$key =>\n ", join( "\n ", @$value ), "\n";
   } 
@@ -211,8 +196,9 @@ sub TIEHASH
 {
     my( $invocant, @options ) = @_;
     my $class = ref( $invocant ) || $invocant;
-    my $s = { options => { GrepRegex => '^[_A-Z][_A-Z0-9]\+\>', }, };
+    my $s = { options => {}, };
     bless $s, $class;
+    _get_bash();
     $s->options( @options );
     $s->keys();
     $s;
@@ -293,14 +279,91 @@ sub _get_env_var
     wantarray ? @ret : ( defined $ret[0] ? $ret[0] : '' );
 }
 
+sub _get_env_keys
+{
+    my %options = _options( @_ );
+    my $bash = _get_bash();
+    my @sources = _sources( %options );
+    my $script = "#!$bash\n" .
+        ( @sources ? join( ';', @sources ).';' : '' ) .
+        'set';
+    my $result = _execute_script( $script, %options );
+    my %hkeys = _select_keys( $result, %options );
+    if( @sources && $options{SourceOnly} ) {
+        $script = "#!$bash\nset";
+        $result = _execute_script( $script, %options );
+        my %bhkeys = _select_keys( $result, %options );
+        map { delete $hkeys{$_} } CORE::keys %bhkeys;
+        delete $hkeys{PIPESTATUS}; # magically appears when a script is run
+    }
+    my @keys = sort( CORE::keys %hkeys );
+    return unless defined wantarray;
+    wantarray ? @keys : \@keys;
+}
+
+sub _select_keys
+{
+    my $result = shift;
+    my %options = _options( @_ );
+    my %hkeys = ();
+    pos( $result ) = 0;
+    while( $result =~ /(.*?)=(?:'.*?'\n|\(.*?\)\n|.*?\n)/sg ) {
+        my $name = $1;
+        next unless $name;
+        next if $name eq 'BASH_EXECUTION_STRING';
+        if( $options{SelectRegex} ) {
+            next unless $name =~ /$options{SelectRegex}/;
+        }
+        $hkeys{$name} = 1;
+    }
+    %hkeys;
+}
+
+sub _get_bash
+{
+    my $bash = $ENV{SHELL};
+    return $bash if $bash && -f $bash && -x _;
+    $bash = `echo "\$SHELL"`;
+    return $bash if $bash && -f $bash && -x _;
+    $bash = $ENV{BASH};
+    return $bash if $bash && -f $bash && -x _;
+    $bash = `echo "\$BASH"`;
+    return $bash if $bash && -f $bash && -x _;
+    $bash = '/bin/bash';
+    return $bash if $bash && -f $bash && -x _;
+    Carp::croak( "Oops: cannot find bash.\n" );
+}
+
 sub _sources
 {
     my %options = _options( @_ );
-    my @sources =
-        map { /^\. / ? $_ : ". $_"; }
+    my @srcs =
+        map { split /;/, $_ }
     $options{Source} ?
         ( ref $options{Source} && ref $options{Source} eq 'ARRAY' ?
           @{$options{Source}} : $options{Source} ) : ();
+    return () unless @srcs;
+    my @sources = ();
+    for my $source( @srcs ) {
+        next unless $source;
+        $source =~ s/^\. //;
+        next unless $source;
+        unless( -f $source ) {
+            warn "Source '$source' not found. Ignored.\n";
+            next;
+        }
+        unless( -x _ ) {
+            warn "Source '$source' not executable. Ignored.\n";
+            next;
+        }
+        my $fh;
+        unless( open( $fh, $source ) ) {
+            warn "Source '$source' open error: $!. Ignored.\n";
+            next;
+        }
+        close $fh;
+        push @sources, ". $source";
+    }
     @sources;
 }
 
@@ -318,6 +381,7 @@ sub _execute_script
 {
     my $script = shift;
     my %options = _options( @_ );
+    print STDERR "script:\n$script\n" if $options{Debug};
     my $result = eval { `$script 2>&1` };
     Carp::croak
         ( "Oops: internal bash script error or your shell is not bash:\n".
@@ -332,7 +396,7 @@ sub _load_contents
     my %options = _options( @_ );
     my $content = {};
     pos( $data ) = 0;
-    while( $data =~ /<<8774(.+?)>>(.+?)<<4587>>/sg ) {
+    while( $data =~ /<<8774(.+?)>>(.*?|)<<4587>>/sg ) {
         push @{$content->{$1}}, $2;
     }
     print STDERR "content: ", Dumper( $content ) if $options{Debug};
@@ -378,7 +442,7 @@ and:
 Now compare the outputs. See, perl's list is much shorter than the bash
 list. This is because the environment passed to perl contains only variables
 that have been exported( I think ). There is no pure-perl way to get all
-the variables in the rnning shell; also, forget about getting all the elements
+the variables in the running shell; also, forget about getting all the elements
 of variables that are bash arrays!
 
 In the following discussion and examples, I show how I use this module with
@@ -387,7 +451,7 @@ please see L<A SHAMELESS PLUG FOR LINUX SORCERER> below.
 
 =head2 Options
 
-The folling options, specified as B<func( ..., key1 =E<gt> value1, ..., )> are
+The following options, specified as B<func( ..., key1 =E<gt> value1, ..., )> are
 provided.
 
 =over 4
@@ -400,7 +464,7 @@ Values B<0 or 1>, default B<0>.
 
 =item ForceArray or []
 
-Defines how enrvironment variable data are returned. Especially useful if
+Defines how environment variable data are returned. Especially useful if
 you expect to handle bash array variables. For example, an array variable,
 'BASH_VERSINFO', returns data as follows:
 
@@ -425,16 +489,12 @@ of the option arguments.
 
 Values B<0 or 1>, default B<0>.
 
-=item GrepRegex
+=item SelectRegex
 
-The regular expression to use in the bash script( created and run internally )
-to extract variables from the bash environment. The script uses this
-contrruct to get a list of environment variable names:
+The regular expression to select which environment variables to read.
+It may be any valid perl regular expression.
 
-  set | grep "GrepRegex" '
-
-Default: B<'^[_A-Z][_A-Z0-9]\+\>'>( uppercase variables starting with
-a non-numeric .)
+Values B<valid perl regex>, default: B<none>.
 
 =item Keys
 
@@ -444,13 +504,41 @@ Values B<0 or 1>, default B<0>.
 
 =item Source
 
-The path name of one or more executable bash scripts, separated
-with semicolins, whith which to 'source' ( execute with a leading dot )
+The path name of one or more executable bash scripts
+with which to 'source' ( execute with a leading dot )
 before extracting environment. Any variables set in these scripts
 is then available for this module. The leading dot is prepended if not
 supplied.
 
+More than one source file may be specified as a scalar of semicolon
+separated source file names:
+
+  Source => '/etc/bebe/configure.sh;/etc/sorcery/config',
+
+or an array reference:
+
+  Source => [ qw( /etc/bebe/configure.sh /etc/sorcery/config ) ],
+
 Values: B<any list of executable bash scripts>, Default B<none>.
+
+=item SourceOnly
+
+Returns only the environment variables defined by the Source script(s).
+Some bash-generated environment variables may 'sneak' through,
+notably, 'PIPESTATUS'.
+
+Values B<0 or 1>, default B<0>.
+
+=item WARNING
+
+SourceOnly is handled by reading all the current environment variables
+( without sourcing the entries in Source ), then reading all the variable
+( including Source ), and removing any variable that does not appear in
+both lists. If you have B<exported a variable that you are sourcing> in
+the shell where your script will run, it B<will NOT appear> in the returned
+list. SourceOnly is of limited value and should only be used when you
+really want only the keys from your sourced scripts. 'get', 'get_env_var',
+and tie access to variables are not affected by SourceOnly.
 
 =back
 
@@ -468,7 +556,7 @@ get_env_var( options...);
 
 =item options used
 
-B<Debug>, B<ForceArray>, B<GrepRegex>, B<Source>.
+B<Debug>, B<ForceArray>, B<SelectRegex>, B<Source>, B<SourceOnly>.
 
 =item operation
 
@@ -488,7 +576,7 @@ Env::Bash::VARIABLE_NAME( options...);
 
 =item note
 
-This is the AUTOLOAD version if 'get_env_var'.
+This is the AUTOLOAD version of 'get_env_var'.
 
 =back
 
@@ -502,7 +590,7 @@ get_env_keys( options...);
 
 =item options used
 
-B<Debug>, B<ForceArray>, B<GrepRegex>, B<Source>.
+B<Debug>, B<ForceArray>, B<SelectRegex>, B<Source>, B<SourceOnly>.
 
 =item operation
 
@@ -523,7 +611,7 @@ Env::Bash->new( options... );
 
 =item options used
 
-B<Debug>, B<ForceArray>, B<GrepRegex>, B<Keys>, B<Source>.
+B<Debug>, B<ForceArray>, B<SelectRegex>, B<Keys>, B<Source>, B<SourceOnly>.
 
 =item operation
 
@@ -542,7 +630,7 @@ $env_bash_obj->get( options... );
 
 =item options used
 
-B<Debug>, B<ForceArray>, B<GrepRegex>, B<Source>.
+B<Debug>, B<ForceArray>, B<SelectRegex>, B<Source>, B<SourceOnly>.
 
 =item operation
 
@@ -562,7 +650,7 @@ $env_bash_obj->VARIABLE_NAME( options... );
 
 =item options used
 
-B<Debug>, B<ForceArray>, B<GrepRegex>, B<Source>.
+B<Debug>, B<ForceArray>, B<SelectRegex>, B<Source>, B<SourceOnly>.
 
 =item operation
 
@@ -599,7 +687,7 @@ $env_bash_obj->keys( options... );
 
 =item options used
 
-B<Debug>, B<ForceArray>, B<GrepRegex>, B<Source>.
+B<Debug>, B<ForceArray>, B<SelectRegex>, B<Source>, B<SourceOnly>.
 
 =item operation
 
@@ -618,7 +706,7 @@ $env_bash_obj->reload_keys( options... );
 
 =item options used
 
-B<Debug>, B<ForceArray>, B<GrepRegex>, B<Source>.
+B<Debug>, B<ForceArray>, B<SelectRegex>, B<Source>, B<SourceOnly>.
 
 =item operation
 
@@ -660,12 +748,12 @@ specified.
 
 =item options used
 
-B<Debug>, B<ForceArray>, B<GrepRegex>, B<Keys>, B<Source>.
+B<Debug>, B<ForceArray>, B<SelectRegex>, B<Keys>, B<Source>, B<SourceOnly>.
 
 =item operation
 
 Ties a hash variable to Env::Bash. The resulting hash may be used like a normal
-hash, execept it is read-only. Note: if B<ForceArray> is specified, the
+hash, except it is read-only. Note: if B<ForceArray> is specified, the
 resulting hash is a hash of array references.
 
 =back
@@ -685,9 +773,9 @@ clear ( as %env = (); ).
 
 =item note
 
-Unlike normal hashs, the keys are maintained in sorted order, therefore
+Unlike normal hashes, the keys are maintained in sorted order, therefore
 there is no need tor use the '... sort keys ...' construct unless you
-whish to process in some non-standard order.
+wish to process in some non-standard order.
 
 =back
 
@@ -701,10 +789,10 @@ B<Linux Sorcerer>, by Kyle Sallee, is a great Linux distribution. It gives
 you one of the most up-to-date and fastest Linux systems available. Sorcerer
 is based upon package 'source', not pre-compiled rpm's. You ( with the
 bash scripts supplied by Sorcerer ) compile and install the packages optimized
-to your maching. You configure your own kernel for the best, leanest kernel
+to your machine. You configure your own kernel for the best, leanest kernel
 matching your environment. B<Current> packages are made available as soon
 as they are stable; you do not have to wait six months for the next release
-of your distribtion.
+of your distribution.
 
 With the gain there is always the pain:
 

@@ -1,9 +1,9 @@
-Env-Bash version 0.00_02
+Env-Bash version 0.00_05
 ========================
 
 NAME
-    Env::Bash - Perl extension for accessing ALL environment variables in
-    the Borne Again Shell ( bash ).
+    Env::Bash - Perl extension for accessing _aLL_ bash environment
+    variables.
 
 INSTALLATION
     To install this module type the following:
@@ -28,13 +28,14 @@ SYNOPSIS
                              Source => "/etc/sorcery/config", );
       print "SORCERER_MIRRORS via get_env_var:\n",
       join( "\n", @var ), "\ncount = ", scalar @var, "\n";
-
+  
       @var = Env::Bash::SORCERER_MIRRORS
           ( Source => "/etc/sorcery/config", );
       print "SORCERER_MIRRORS via name:\n",
       join( "\n", @var ), "\ncount = ", scalar @var, "\n";
-
-      my @keys = get_env_keys( Source => "/etc/sorcery/config", );
+  
+      my @keys = get_env_keys( Source => "/etc/sorcery/config",
+                               SourceOnly => 1, );
       print "first 10 keys:\n", map { " $_\n" } @keys[0..9];
 
     Object oriented interface:
@@ -44,36 +45,36 @@ SYNOPSIS
       my @var = $be->get( "SORCERER_MIRRORS" );
       print "SORCERER_MIRRORS via get:\n",
       join( "\n", @var ), "\ncount = ", scalar @var, "\n";
-    
+      
       @var = $be->SORCERER_MIRRORS;
       print "SORCERER_MIRRORS via name:\n",
       join( "\n", @var ), "\ncount = ", scalar @var, "\n";
-
+  
       $be = Env::Bash->new( Keys => 1,);
       @var = $be->HOSTTYPE;
       print "HOSTTYPE via name:\n",
       join( "\n", @var ), "\ncount = ", scalar @var, "\n";
-
+  
       if( $be->exists( 'BASH_VERSINFO' ) ) {
           print "BASH_VERSINFO =>\n ",
           join( "\n ", $be->BASH_VERSINFO ), "\n";
       }
-
+  
       my %options = $be->options( [], Keys => 1 );
 
     Tie HASH interface:
 
       my %env = ();
       tie %env, "Env::Bash", Source => "/etc/sorcery/config", ForceArray => 1;
-
+  
       my $var = $env{SORCERER_MIRRORS};
       print "SORCERER_MIRRORS via tied hash:\n",
       join( "\n", @$var ), "\ncount = ", scalar @$var, "\n";
-
+  
       $var = $env{HOSTTYPE};
       print "HOSTTYPE via tied hash:\n",
       join( "\n", @$var ), "\ncount = ", scalar @$var, "\n";
-
+  
       while( my( $key, $value ) = each %env ) {
           print "$key =>\n ", join( "\n ", @$value ), "\n";
       } 
@@ -93,16 +94,16 @@ DESCRIPTION
     Now compare the outputs. See, perl's list is much shorter than the bash
     list. This is because the environment passed to perl contains only
     variables that have been exported( I think ). There is no pure-perl way
-    to get all the variables in the rnning shell; also, forget about getting
-    all the elements of variables that are bash arrays!
+    to get all the variables in the running shell; also, forget about
+    getting all the elements of variables that are bash arrays!
 
     In the following discussion and examples, I show how I use this module
     with Linux Sorcerer. For my fellow Sorcererites, this is fine, for
     others, please see "A SHAMELESS PLUG FOR LINUX SORCERER" below.
 
   Options
-    The folling options, specified as func( ..., key1 => value1, ..., ) are
-    provided.
+    The following options, specified as func( ..., key1 => value1, ..., )
+    are provided.
 
     Debug
         Prints debugging information to STDERR.
@@ -110,7 +111,7 @@ DESCRIPTION
         Values 0 or 1, default 0.
 
     ForceArray or []
-        Defines how enrvironment variable data are returned. Especially
+        Defines how environment variable data are returned. Especially
         useful if you expect to handle bash array variables. For example, an
         array variable, 'BASH_VERSINFO', returns data as follows:
 
@@ -135,16 +136,11 @@ DESCRIPTION
 
         Values 0 or 1, default 0.
 
-    GrepRegex
-        The regular expression to use in the bash script( created and run
-        internally ) to extract variables from the bash environment. The
-        script uses this contrruct to get a list of environment variable
-        names:
+    SelectRegex
+        The regular expression to select which environment variables to
+        read. It may be any valid perl regular expression.
 
-          set | grep "GrepRegex" '
-
-        Default: '^[_A-Z][_A-Z0-9]\+\'>( uppercase variables starting with a
-        non-numeric .)
+        Values valid perl regex, default: none.
 
     Keys
         Whether or not to load an array of environment variable names.
@@ -152,13 +148,39 @@ DESCRIPTION
         Values 0 or 1, default 0.
 
     Source
-        The path name of one or more executable bash scripts, separated with
-        semicolins, whith which to 'source' ( execute with a leading dot )
-        before extracting environment. Any variables set in these scripts is
-        then available for this module. The leading dot is prepended if not
-        supplied.
+        The path name of one or more executable bash scripts with which to
+        'source' ( execute with a leading dot ) before extracting
+        environment. Any variables set in these scripts is then available
+        for this module. The leading dot is prepended if not supplied.
+
+        More than one source file may be specified as a scalar of semicolon
+        separated source file names:
+
+          Source => '/etc/bebe/configure.sh;/etc/sorcery/config',
+
+        or an array reference:
+
+          Source => [ qw( /etc/bebe/configure.sh /etc/sorcery/config ) ],
 
         Values: any list of executable bash scripts, Default none.
+
+    SourceOnly
+        Returns only the environment variables defined by the Source
+        script(s). Some bash-generated environment variables may 'sneak'
+        through, notably, 'PIPESTATUS'.
+
+        Values 0 or 1, default 0.
+
+    WARNING
+        SourceOnly is handled by reading all the current environment
+        variables ( without sourcing the entries in Source ), then reading
+        all the variable ( including Source ), and removing any variable
+        that does not appear in both lists. If you have exported a variable
+        that you are sourcing in the shell where your script will run, it
+        will NOT appear in the returned list. SourceOnly is of limited value
+        and should only be used when you really want only the keys from your
+        sourced scripts. 'get', 'get_env_var', and tie access to variables
+        are not affected by SourceOnly.
 
   Standard interface
     The non-object oriented interface.
@@ -168,7 +190,7 @@ DESCRIPTION
         get_env_var( options...);
 
     options used
-        Debug, ForceArray, GrepRegex, Source.
+        Debug, ForceArray, SelectRegex, Source, SourceOnly.
 
     operation
         Returns the contents of the specified environment variable in scalar
@@ -180,14 +202,14 @@ DESCRIPTION
         Env::Bash::VARIABLE_NAME( options...);
 
     note
-        This is the AUTOLOAD version if 'get_env_var'.
+        This is the AUTOLOAD version of 'get_env_var'.
 
    get_env_keys
     prototype
         get_env_keys( options...);
 
     options used
-        Debug, ForceArray, GrepRegex, Source.
+        Debug, ForceArray, SelectRegex, Source, SourceOnly.
 
     operation
         Returns a sorted array ( list context ) or an array reference (
@@ -199,7 +221,7 @@ DESCRIPTION
         Env::Bash->new( options... );
 
     options used
-        Debug, ForceArray, GrepRegex, Keys, Source.
+        Debug, ForceArray, SelectRegex, Keys, Source, SourceOnly.
 
     operation
         Returns a Env::Bash object with the specified options saved in the
@@ -211,7 +233,7 @@ DESCRIPTION
         $env_bash_obj->get( options... );
 
     options used
-        Debug, ForceArray, GrepRegex, Source.
+        Debug, ForceArray, SelectRegex, Source, SourceOnly.
 
     operation
         Returns the contents of the specified environment variable in scalar
@@ -223,7 +245,7 @@ DESCRIPTION
         $env_bash_obj->VARIABLE_NAME( options... );
 
     options used
-        Debug, ForceArray, GrepRegex, Source.
+        Debug, ForceArray, SelectRegex, Source, SourceOnly.
 
     operation
         This is the AUTOLOAD version of 'get'.
@@ -244,7 +266,7 @@ DESCRIPTION
         $env_bash_obj->keys( options... );
 
     options used
-        Debug, ForceArray, GrepRegex, Source.
+        Debug, ForceArray, SelectRegex, Source, SourceOnly.
 
     operation
         Returns a sorted array ( list context ) or an array reference (
@@ -255,7 +277,7 @@ DESCRIPTION
         $env_bash_obj->reload_keys( options... );
 
     options used
-        Debug, ForceArray, GrepRegex, Source.
+        Debug, ForceArray, SelectRegex, Source, SourceOnly.
 
     operation
         Reloads the environment key array and returns a sorted array ( list
@@ -280,11 +302,11 @@ DESCRIPTION
           tie %env, "Env::Bash", options...;
 
     options used
-        Debug, ForceArray, GrepRegex, Keys, Source.
+        Debug, ForceArray, SelectRegex, Keys, Source, SourceOnly.
 
     operation
         Ties a hash variable to Env::Bash. The resulting hash may be used
-        like a normal hash, execept it is read-only. Note: if ForceArray is
+        like a normal hash, except it is read-only. Note: if ForceArray is
         specified, the resulting hash is a hash of array references.
 
    hash operations
@@ -297,9 +319,9 @@ DESCRIPTION
         = (); ).
 
     note
-        Unlike normal hashs, the keys are maintained in sorted order,
+        Unlike normal hashes, the keys are maintained in sorted order,
         therefore there is no need tor use the '... sort keys ...' construct
-        unless you whish to process in some non-standard order.
+        unless you wish to process in some non-standard order.
 
   Export
     get_env_var and get_env_keys are unconditionally exported.
@@ -309,10 +331,10 @@ A SHAMELESS PLUG FOR LINUX SORCERER
     you one of the most up-to-date and fastest Linux systems available.
     Sorcerer is based upon package 'source', not pre-compiled rpm's. You (
     with the bash scripts supplied by Sorcerer ) compile and install the
-    packages optimized to your maching. You configure your own kernel for
+    packages optimized to your machine. You configure your own kernel for
     the best, leanest kernel matching your environment. Current packages are
     made available as soon as they are stable; you do not have to wait six
-    months for the next release of your distribtion.
+    months for the next release of your distribution.
 
     With the gain there is always the pain:
 
@@ -336,3 +358,4 @@ COPYRIGHT AND LICENSE
     This library is free software; you can redistribute it and/or modify it
     under the same terms as Perl itself, either Perl version 5.8.6 or, at
     your option, any later version of Perl 5 you may have available.
+

@@ -10,7 +10,7 @@ use Test::More;
 my $nbr = scalar keys %ENV;
 $nbr-- if $ENV{SHLVL};
 $nbr-- if $ENV{_};
-plan tests  => $nbr + 4 + 5 + 4 + 1;
+plan tests  => $nbr + 4 + 5 + 4 + 3 + 1;
 
 my %env = ();
 
@@ -66,8 +66,18 @@ ok( exists $env{STOOGES},          "check STOOGES exists" );
 ok( exists $env{SORCERER_MIRRORS}, "check SORCERER_MIRRORS exists" );
 ok( ! exists $env{HAPPYFUNBALL},   "check HAPPYFUNBALL ! exists" );
 
+# check SourceOnly
+
+@sb = qw( SORCERER_MIRRORS STOOGES );
+$i = 0;
+tie %env, "Env::Bash", Source => $source, SourceOnly => 1;
+while( my( $key, $value ) = each %env ) {
+    ok( $key eq $sb[$i++], "check SourceOnly key $key" ) if $i < @sb;
+} 
+ok( $i == @sb, "check SourceOnly key count" );
+
 # check for bad source script
 
 diag( "several failure messages should follow - that's ok" );
 eval { tie %env, "Env::Bash", Source => "$Bin/happyfunball"; };
-ok( $@, "check missing source failure" );
+ok( ! $@, "check missing source failure" );
