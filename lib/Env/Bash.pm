@@ -12,7 +12,9 @@ our @ISA = qw(Exporter);
 
 our @EXPORT    = qw( get_env_var get_env_keys );
 
-our $VERSION = '0.02';
+our $HAVEBASH = 1;
+
+our $VERSION = '0.03';
 $VERSION = eval $VERSION;
 
 =pod
@@ -109,7 +111,7 @@ sub new
     my $class = ref( $invocant ) || $invocant;
     my $s = { options => {}, };
     bless $s, $class;
-    _get_bash();
+    _have_bash();
     $s->options( @options );
     $s->keys() if $s->{options}{Keys};
     $s;
@@ -197,7 +199,7 @@ sub TIEHASH
     my $class = ref( $invocant ) || $invocant;
     my $s = { options => {}, };
     bless $s, $class;
-    _get_bash();
+    _have_bash();
     $s->options( @options );
     $s->keys();
     $s;
@@ -257,21 +259,26 @@ sub _get_env_var
 {
     return unless defined wantarray;
     my $name = shift;
-    my %options  = _options( @_ );
     return undef unless $name;
 
-    my @script =
-    (
-     _sources( %options ),
-     _script_contents( $name ),
-     );
-    my $script = join ";", @script;
-    print STDERR "script:\n$script\n" if $options{Debug};
-    
-    my $result = _execute_script( $script, %options );
+    my @ret = ();
+    my %options  = _options( @_ );
+    if( _have_bash() ) {
+        my @script =
+            (
+             _sources( %options ),
+             _script_contents( $name ),
+             );
+        my $script = join ";", @script;
+        print STDERR "script:\n$script\n" if $options{Debug};
+   
+        my $result = _execute_script( $script, %options );
 
-    my $href = _load_contents( $result, %options );
-    my @ret = $href->{$name} ? @{$href->{$name}} : () ;
+        my $href = _load_contents( $result, %options );
+        @ret = $href->{$name} ? @{$href->{$name}} : () ;
+    } else {
+        push @ret, $ENV{$name} || '';
+    }
     if( $options{ForceArray} ) {
         return wantarray ? @ret : \@ret;
     }
@@ -281,21 +288,26 @@ sub _get_env_var
 sub _get_env_keys
 {
     my %options = _options( @_ );
-    my $bash = _get_bash();
-    my @sources = _sources( %options );
-    my $script = "#!$bash\n" .
-        ( @sources ? join( ';', @sources ).';' : '' ) .
-        'set';
-    my $result = _execute_script( $script, %options );
-    my %hkeys = _select_keys( $result, %options );
-    if( @sources && $options{SourceOnly} ) {
-        $script = "#!$bash\nset";
-        $result = _execute_script( $script, %options );
-        my %bhkeys = _select_keys( $result, %options );
-        map { delete $hkeys{$_} } CORE::keys %bhkeys;
-        delete $hkeys{PIPESTATUS}; # magically appears when a script is run
+    my $bash = _have_bash();
+    my @keys = ();
+    if( $bash ) {
+        my @sources = _sources( %options );
+        my $script = "#!$bash\n" .
+            ( @sources ? join( ';', @sources ).';' : '' ) .
+            'set';
+        my $result = _execute_script( $script, %options );
+        my %hkeys = _select_keys( $result, %options );
+        if( @sources && $options{SourceOnly} ) {
+            $script = "#!$bash\nset";
+            $result = _execute_script( $script, %options );
+            my %bhkeys = _select_keys( $result, %options );
+            map { delete $hkeys{$_} } CORE::keys %bhkeys;
+            delete $hkeys{PIPESTATUS}; # magically appears when a script is run
+        }
+        @keys = sort( CORE::keys %hkeys );
+    } else {
+        @keys = sort( CORE::keys %ENV );
     }
-    my @keys = sort( CORE::keys %hkeys );
     return unless defined wantarray;
     wantarray ? @keys : \@keys;
 }
@@ -318,19 +330,18 @@ sub _select_keys
     %hkeys;
 }
 
-sub _get_bash
+sub _have_bash
 {
-    my $bash = $ENV{SHELL};
+    my $bash;
+    $HAVEBASH = 1;
+    $bash = $ENV{SHELL};
     return $bash if $bash && -f $bash && -x _;
-    $bash = `echo "\$SHELL"`;
-    return $bash if $bash && -f $bash && -x _;
+    return 'bash' if system( 'bash', '-c', '' ) == 0;
     $bash = $ENV{BASH};
     return $bash if $bash && -f $bash && -x _;
-    $bash = `echo "\$BASH"`;
-    return $bash if $bash && -f $bash && -x _;
-    $bash = '/bin/bash';
-    return $bash if $bash && -f $bash && -x _;
-    Carp::croak( "Oops: cannot find bash.\n" );
+    warn "No bash executable found, running as \$ENV{...}\n" if $HAVEBASH;
+    $HAVEBASH = 0;
+    '';
 }
 
 sub _sources
@@ -447,6 +458,9 @@ of variables that are bash arrays!
 In the following discussion and examples, I show how I use this module with
 B<Linux Sorcerer>. For my fellow Sorcererites, this is fine, for others,
 please see L<A SHAMELESS PLUG FOR LINUX SORCERER> below.
+
+B<NOTE:> on systems without bash, this module turns into an expensive
+inplementation of $ENV{...}.
 
 =head2 Options
 
@@ -816,6 +830,12 @@ All and all, I love it! Check it out at L<http://sorcerer.wox.org>
 =item December 23, 2004
 
 Minor bug in AUTOLOAD in version 0.01. Fixed in 0.02.
+
+=item December 24, 2004
+
+On systems without a bash executable, revert to using $ENV{...} and     
+skip tests using source scripts ( as on
+MSWin32 ). Fixed in 0.03.
 
 =back
 

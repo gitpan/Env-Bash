@@ -1,9 +1,13 @@
-Env-Bash version 0.02
+Env-Bash version 0.03
 ========================
 
 NAME
     Env::Bash - Perl extension for accessing _all_ bash environment
     variables.
+
+NOTE
+    On systems without bash, this module turns into an expensive
+    inplementation of $ENV{...}.
 
 INSTALLATION
     To install this module type the following:
@@ -100,6 +104,9 @@ DESCRIPTION
     In the following discussion and examples, I show how I use this module
     with Linux Sorcerer. For my fellow Sorcererites, this is fine, for
     others, please see "A SHAMELESS PLUG FOR LINUX SORCERER" below.
+
+    NOTE: on systems without bash, this module turns into an expensive
+    inplementation of $ENV{...}.
 
   Options
     The following options, specified as func( ..., key1 => value1, ..., )
@@ -348,6 +355,9 @@ A SHAMELESS PLUG FOR LINUX SORCERER
 BUGS
     December 23, 2004
         Minor bug in AUTOLOAD in version 0.01. Fixed in 0.02.
+    December 24, 2004
+        On systems without a bash executable, revert to using $ENV{...} and
+        skip tests using source scripts ( as on MSWin32 ). Fixed in 0.03.
 
 SEE ALSO
     The 'Advanced Bash-Scripting Guide' at
