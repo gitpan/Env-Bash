@@ -17,3 +17,6 @@ Revision history for Perl extension Env::Bash.
 
 0.01     Wed Dec 22 04:31:52 UTC 2004
         - changed version from beta to normal.
+
+0.02     Thu Dec 23 10:23:51 UTC 2004
+        - minor bug fixed in AUTOLOAD.

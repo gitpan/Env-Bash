@@ -18,7 +18,7 @@ my $be = Env::Bash->new;
 for my $var( sort keys %ENV ) {
     next if $var eq 'SHLVL' || $var eq '_';
     my $pv = $ENV{$var};
-    my $mv = $be->get( $var );
+    my $mv = $be->$var;
     is( $pv, $mv, "compare $var" );
 }
 
@@ -49,9 +49,9 @@ $name = 'SORCERER_MIRRORS';
             ftp://sorcerer.mirrors.pair.com
             http://sorcerer.mirrors.pair.com
             );
-$var = $be->get( $name, ForceArray => 0, Source => $source );
+$var = $be->$name( ForceArray => 0, Source => $source );
 is( $var, $sb[0], "compare sorces $name" );
-@vars = $be->get( $name, [], );
+@vars = $be->$name( [], );
 $i = 0;
 for my $sb( @sb ) {
     is( $vars[$i++], $sb, "compare sorces $name $sb" );

@@ -7,7 +7,7 @@ WriteMakefile(
     VERSION_FROM      => 'lib/Env/Bash.pm', # finds $VERSION
     PREREQ_PM         =>
               {
-                  Test::More  => 0.50,
+                  Test::More  => 0.47,
                 },
     ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
       (ABSTRACT_FROM  => 'lib/Env/Bash.pm', # retrieve abstract from module

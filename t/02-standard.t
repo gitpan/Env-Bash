@@ -10,7 +10,7 @@ use Test::More;
 my $nbr = scalar keys %ENV;
 $nbr-- if $ENV{SHLVL};
 $nbr-- if $ENV{_};
-plan tests  => $nbr + 4 + 5 + 4 + 1 + 1;
+plan tests  => $nbr + 4 + 5 + 4 + 2 + 1;
 
 # test to check %ENV matched get_env_var
 
@@ -68,6 +68,8 @@ $name = 'STOOGES';
 @sb = qw( Curly Larry Moe );
 $var = Env::Bash::STOOGES( Source => $source );
 is( $var, $sb[0], "compare sorces $name ( AUTOLOAD )" );
+$var = Env::Bash::PATH();
+is( $var, $ENV{PATH}, "compare sorces PATH ( AUTOLOAD )" );
 
 # check fot bad source script
 

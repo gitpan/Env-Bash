@@ -12,14 +12,14 @@ our @ISA = qw(Exporter);
 
 our @EXPORT    = qw( get_env_var get_env_keys );
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 $VERSION = eval $VERSION;
 
 =pod
 
 =head1 NAME
 
-Env::Bash - Perl extension for accessing _aLL_ bash environment variables.
+Env::Bash - Perl extension for accessing _all_ bash environment variables.
 
 =head1 SYNOPSIS
 
@@ -52,10 +52,9 @@ sub AUTOLOAD {
     return if $name =~ /DESTROY$/;
     $name =~ s/^.*:://;
     return unless $name =~ /^[_A-Z][_A-Z0-9]*$/;
-    my $s = shift;
-    $s && ref $s && $s->isa( 'Env::Bash' ) ?
-        $s->get( $name, @_ ) :
-        _get_env_var( $name, $s, @_ );
+    $_[0] && ref $_[0] && $_[0]->isa( 'Env::Bash' ) ?
+        shift->get( $name, @_ ) :
+        _get_env_var( $name, @_ );
 }
 
 # -------------------------
@@ -809,6 +808,16 @@ With the gain there is always the pain:
 =back
 
 All and all, I love it! Check it out at L<http://sorcerer.wox.org>
+
+=head1 BUGS
+
+=over 4
+
+=item December 23, 2004
+
+Minor bug in AUTOLOAD in version 0.01. Fixed in 0.02.
+
+=back
 
 =head1 SEE ALSO
 

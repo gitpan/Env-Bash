@@ -1,8 +1,8 @@
-Env-Bash version 0.01
+Env-Bash version 0.02
 ========================
 
 NAME
-    Env::Bash - Perl extension for accessing _aLL_ bash environment
+    Env::Bash - Perl extension for accessing _all_ bash environment
     variables.
 
 INSTALLATION
@@ -344,6 +344,10 @@ A SHAMELESS PLUG FOR LINUX SORCERER
     Not for the beginner.
 
     All and all, I love it! Check it out at <http://sorcerer.wox.org>
+
+BUGS
+    December 23, 2004
+        Minor bug in AUTOLOAD in version 0.01. Fixed in 0.02.
 
 SEE ALSO
     The 'Advanced Bash-Scripting Guide' at
