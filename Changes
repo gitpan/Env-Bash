@@ -4,3 +4,5 @@ Revision history for Perl extension Env::Bash.
 	- original version; created by h2xs 1.23 with options
 		-A -B -X -b 5.8.0 Env::Bash
 
+0.00_02  Tue Dec 21 03:01:57 UTC 2004
+        - minor bug fixed in _get_env_var.

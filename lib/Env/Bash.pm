@@ -12,7 +12,7 @@ our @ISA = qw(Exporter);
 
 our @EXPORT    = qw( get_env_var get_env_keys );
 
-our $VERSION = '0.00_01';
+our $VERSION = '0.00_02';
 $VERSION = eval $VERSION;
 
 =pod
@@ -332,7 +332,7 @@ sub _load_contents
     my %options = _options( @_ );
     my $content = {};
     pos( $data ) = 0;
-    while( $data =~ /<<8774(.+?)>>(.+?)<<4587>>/g ) {
+    while( $data =~ /<<8774(.+?)>>(.+?)<<4587>>/sg ) {
         push @{$content->{$1}}, $2;
     }
     print STDERR "content: ", Dumper( $content ) if $options{Debug};
