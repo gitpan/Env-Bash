@@ -12,7 +12,7 @@ our @ISA = qw(Exporter);
 
 our @EXPORT    = qw( get_env_var get_env_keys );
 
-our $VERSION = '0.00_05';
+our $VERSION = '0.01';
 $VERSION = eval $VERSION;
 
 =pod

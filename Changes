@@ -14,3 +14,6 @@ Revision history for Perl extension Env::Bash.
           made it a perl regex.
         - added option SourceOnly which returns the
           only the variables defined in the Source scripts.
+
+0.01     Wed Dec 22 04:31:52 UTC 2004
+        - changed version from beta to normal.
